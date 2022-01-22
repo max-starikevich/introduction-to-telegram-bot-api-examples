@@ -9,7 +9,7 @@ const port = process.env.PORT || "4000";
 
 async function startBot() {
   if (!token) {
-    throw new Error("Missing POLLING_BOT_TOKEN.");
+    throw new Error("Missing WEBHOOK_BOT_TOKEN.");
   }
 
   if (!webhookURL) {
