@@ -1,6 +1,8 @@
 import * as dotenv from "dotenv";
 import axios from "axios";
 
+import { resolveHostname } from "../hostnameResolver";
+
 dotenv.config();
 
 const token = process.env.POLLING_BOT_TOKEN;
@@ -12,7 +14,7 @@ async function startBot() {
 
   console.info(`🚀 Bot is online (REST API + Polling)`);
 
-  const client = axios.create({
+  const telegramAPI = axios.create({
     baseURL: `https://api.telegram.org/bot${token}`,
     timeout: 5000,
   });
@@ -21,13 +23,10 @@ async function startBot() {
 
   while (true) {
     try {
-      console.info("⌛ Getting updates.");
-
-      const { data } = await client.get("/getUpdates", {
+      const { data } = await telegramAPI.get("/getUpdates", {
         params: {
           offset,
           limit: 1,
-          allowed_updates: ["message"],
         },
       });
 
@@ -39,20 +38,30 @@ async function startBot() {
 
       offset = update.update_id + 1;
 
-      if (!update.message.text) {
+      if (!update?.message?.text) {
         continue;
       }
 
       const chatId = update.message.chat.id;
+      const message = update.message.text;
 
-      console.info("🛫 Sending the message.");
+      if (message === "/start") {
+        await telegramAPI.post("/sendMessage", {
+          chat_id: chatId,
+          text: "Hello! Write any hostname to get its IP address.",
+        });
 
-      await client.post("/sendMessage", {
+        continue;
+      }
+
+      const ip = await resolveHostname(message);
+
+      await telegramAPI.post("/sendMessage", {
         chat_id: chatId,
-        text: `${update.message.text.toUpperCase()} 🔥🔥🔥`,
+        text: ip || `Cannot resolve this hostname`,
       });
     } catch (e: any) {
-      console.error(`❌ Update processing failed.`, e.message);
+      console.error(`❌ Processing failed. Retrying.`, e.message);
     }
   }
 }

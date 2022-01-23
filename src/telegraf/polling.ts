@@ -1,6 +1,8 @@
 import { Telegraf } from "telegraf";
 import * as dotenv from "dotenv";
 
+import { resolveHostname } from "../hostnameResolver";
+
 dotenv.config();
 
 const token = process.env.POLLING_BOT_TOKEN;
@@ -12,9 +14,15 @@ async function startBot() {
 
   const bot = new Telegraf(token);
 
-  bot.on("text", (ctx) => {
-    console.info("🛫 Sending the message.");
-    ctx.reply(`${ctx.update.message.text.toUpperCase()} 🔥🔥🔥`);
+  bot.command("/start", (ctx) => {
+    ctx.reply("Hello! Write any hostname to get its IP address.");
+  });
+
+  bot.on("text", async (ctx) => {
+    const message = ctx.update.message.text;
+    const ip = await resolveHostname(message);
+
+    ctx.reply(ip || `Cannot resolve this hostname`);
   });
 
   await bot.launch();
